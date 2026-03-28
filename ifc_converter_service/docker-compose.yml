@@ -1,0 +1,16 @@
+services:
+  ifc-converter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      PUBLIC_BASE_URL: http://localhost:8080
+      SHARED_TOKEN: change-me
+      STORAGE_ROOT: /data
+      VERIFY_SSL: "true"
+      PORT: "8080"
+    volumes:
+      - ./data:/data
+    restart: unless-stopped

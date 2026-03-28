@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="odoo_bim_ifc_tiles.BimViewerAction">
+        <div class="o_bim_viewer">
+            <aside class="o_bim_viewer__sidebar">
+                <h2>IFC Viewer</h2>
+                <div class="o_bim_viewer__meta">
+                    <div>
+                        <span class="o_bim_viewer__label">Model</span>
+                        <strong><t t-esc="state.modelName || '-'"/></strong>
+                    </div>
+                    <div>
+                        <span class="o_bim_viewer__label">Version</span>
+                        <strong><t t-esc="state.versionName || '-'"/></strong>
+                    </div>
+                    <div>
+                        <span class="o_bim_viewer__label">Source</span>
+                        <strong><t t-esc="state.sourceFilename || '-'"/></strong>
+                    </div>
+                    <div>
+                        <span class="o_bim_viewer__label">Status</span>
+                        <strong><t t-esc="state.status || '-'"/></strong>
+                    </div>
+                </div>
+                <div class="o_bim_viewer__panel">
+                    <p t-if="state.loading">Loading viewer payload...</p>
+                    <p t-if="state.error" class="o_bim_viewer__error">
+                        <t t-esc="state.error"/>
+                    </p>
+                    <p t-if="state.viewerStatus === 'missing_tileset'">
+                        The version has no tileset URL yet.
+                    </p>
+                    <p t-if="state.viewerStatus === 'missing_cesium'">
+                        CesiumJS is not available in this scaffold. Add the library to backend assets or expose
+                        <code>window.Cesium</code>.
+                    </p>
+                    <p t-if="state.metadataHint">
+                        <t t-esc="state.metadataHint"/>
+                    </p>
+                </div>
+                <div class="o_bim_viewer__panel">
+                    <span class="o_bim_viewer__label">Backend tileset route</span>
+                    <code><t t-esc="state.tilesetUrl || '-'"/></code>
+                    <span class="o_bim_viewer__label">Raw tileset URL</span>
+                    <code><t t-esc="state.rawTilesetUrl || '-'"/></code>
+                </div>
+            </aside>
+            <section class="o_bim_viewer__stage">
+                <div class="o_bim_viewer__canvas" t-ref="viewer"/>
+            </section>
+        </div>
+    </t>
+</templates>

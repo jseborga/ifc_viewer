@@ -1,0 +1,389 @@
+Qué construir
+1) Módulo Odoo
+
+Debe encargarse de:
+
+subir y versionar IFC
+guardar estado de conversión
+abrir el visor
+relacionar el modelo con project.project, project.task o documents.document
+manejar snapshots, comentarios y permisos
+2) Microservicio de conversión
+
+Debe encargarse de:
+
+leer el IFC
+convertirlo a GLB
+generar el paquete 3D Tiles
+devolver a Odoo la URL del tileset.json
+
+IfcOpenShell ofrece IfcConvert para convertir IFC a formatos como GLB, y CesiumGS mantiene 3d-tiles-tools para crear y procesar tilesets 3D Tiles.
+
+3) Visor web
+
+Debe usar un cliente 3D Tiles. La opción más madura para esto es CesiumJS, que carga un tileset desde URL con Cesium3DTileset.fromUrl(...). Además, Cesium soporta styling y filtering sobre 3D Tiles cuando el dataset tiene propiedades útiles.
+
+Arquitectura recomendada
+
+Flujo completo:
+
+Usuario sube modelo.ifc en Odoo.
+Odoo crea una versión BIM en estado pending.
+Odoo llama al microservicio de conversión.
+El microservicio ejecuta:
+IfcConvert modelo.ifc modelo.glb
+glbToB3dm
+createTilesetJson
+opcional gzip y upgrade
+El microservicio guarda la carpeta del tileset y devuelve la ruta del tileset.json.
+Odoo cambia el estado a ready y abre el visor CesiumJS.
+Cuándo conviene esta opción
+
+Te conviene 3D Tiles si esperas:
+
+modelos grandes
+varios modelos federados
+georreferenciación
+futura mezcla con GIS, campus, ciudad o topografía
+
+Si solo quieres ver un edificio aislado y mediano, IFC directo suele ser más simple. Esto ya es una recomendación de diseño mía, basada en que 3D Tiles está pensado para streaming jerárquico de datasets grandes.
+
+Diseño del módulo Odoo
+
+Yo crearía estos modelos.
+
+bim.model
+
+Registro maestro del modelo.
+
+name
+project_id
+task_id
+active_version_id
+discipline
+description
+bim.model.version
+
+Una versión por carga.
+
+bim_model_id
+ifc_attachment_id
+tileset_url
+status = draft, queued, processing, ready, error
+source_filename
+ifc_schema
+uploaded_by
+uploaded_on
+conversion_log
+georef_lon
+georef_lat
+georef_height
+heading
+pitch
+roll
+bim.snapshot
+
+Capturas del visor.
+
+version_id
+image_attachment_id
+camera_json
+note
+bim.comment
+
+Comentarios sobre la vista o el modelo.
+
+version_id
+author_id
+comment
+element_guid
+camera_json
+Estructura de carpetas del módulo
+odoo_bim_ifc_tiles/
+├── __init__.py
+├── __manifest__.py
+├── models/
+│   ├── bim_model.py
+│   ├── bim_version.py
+│   ├── bim_snapshot.py
+│   └── bim_comment.py
+├── controllers/
+│   ├── main.py
+│   └── viewer.py
+├── security/
+│   ├── ir.model.access.csv
+│   └── security.xml
+├── views/
+│   ├── bim_model_views.xml
+│   ├── bim_version_views.xml
+│   ├── bim_menus.xml
+│   └── bim_client_action.xml
+├── static/
+│   └── src/
+│       ├── js/
+│       │   └── bim_viewer_client_action.js
+│       ├── xml/
+│       │   └── bim_viewer_templates.xml
+│       └── scss/
+│           └── bim_viewer.scss
+└── data/
+    └── ir_actions.xml
+
+En Odoo 18, el visor debe montarse como client action con un componente OWL, y sus archivos deben ir en web.assets_backend.
+
+__manifest__.py mínimo
+{
+    "name": "BIM IFC Tiles Viewer",
+    "version": "18.0.1.0.0",
+    "depends": ["base", "mail", "project", "web"],
+    "data": [
+        "security/security.xml",
+        "security/ir.model.access.csv",
+        "views/bim_model_views.xml",
+        "views/bim_version_views.xml",
+        "views/bim_menus.xml",
+        "data/ir_actions.xml",
+    ],
+    "assets": {
+        "web.assets_backend": [
+            "odoo_bim_ifc_tiles/static/src/js/*.js",
+            "odoo_bim_ifc_tiles/static/src/xml/*.xml",
+            "odoo_bim_ifc_tiles/static/src/scss/*.scss",
+        ],
+    },
+    "application": True,
+    "license": "LGPL-3",
+}
+Client action del visor
+
+Odoo documenta que una client action se registra con ir.actions.client y un tag, y luego se implementa en un componente OWL.
+
+XML de la acción
+<record model="ir.actions.client" id="action_bim_viewer">
+    <field name="name">BIM Viewer</field>
+    <field name="tag">odoo_bim_ifc_tiles.BimViewerAction</field>
+</record>
+JS base
+/** @odoo-module **/
+
+import { registry } from "@web/core/registry";
+import { Component, onMounted, useRef } from "@odoo/owl";
+
+class BimViewerAction extends Component {
+    static template = "odoo_bim_ifc_tiles.BimViewerTemplate";
+
+    setup() {
+        this.viewerRef = useRef("viewer");
+        onMounted(async () => {
+            const tilesetUrl = this.props.action.params.tileset_url;
+
+            const viewer = new Cesium.Viewer(this.viewerRef.el, {
+                animation: false,
+                timeline: false,
+                baseLayerPicker: false,
+            });
+
+            const tileset = await Cesium.Cesium3DTileset.fromUrl(tilesetUrl);
+            viewer.scene.primitives.add(tileset);
+            await viewer.zoomTo(tileset);
+        });
+    }
+}
+
+registry.category("actions").add(
+    "odoo_bim_ifc_tiles.BimViewerAction",
+    BimViewerAction
+);
+Template XML
+<templates xml:space="preserve">
+    <t t-name="odoo_bim_ifc_tiles.BimViewerTemplate">
+        <div class="o_bim_viewer_root" t-ref="viewer" style="height:100vh; width:100%;"/>
+    </t>
+</templates>
+Microservicio de conversión
+
+Yo lo haría en Node.js o Python, pero usando herramientas ya maduras.
+
+Paso 1: IFC → GLB
+
+IfcOpenShell documenta IfcConvert para convertir IFC a GLB.
+
+IfcConvert /data/input/model.ifc /data/work/model.glb
+Paso 2: GLB → B3DM
+
+3d-tiles-tools tiene glbToB3dm.
+
+npx 3d-tiles-tools glbToB3dm \
+  -i /data/work/model.glb \
+  -o /data/tiles/model.b3dm
+Paso 3: crear tileset.json
+
+3d-tiles-tools tiene createTilesetJson; además acepta posición cartográfica y rotación.
+
+npx 3d-tiles-tools createTilesetJson \
+  -i /data/tiles/ \
+  -o /data/tiles/tileset.json \
+  --cartographicPositionDegrees -68.1193 -16.4897 3650 \
+  --rotationDegrees 0 0 0
+Paso 4: compresión opcional
+
+3d-tiles-tools soporta gzip.
+
+npx 3d-tiles-tools gzip -i /data/tiles/ -o /data/tiles_gzip/
+API mínima entre Odoo y el microservicio
+POST /convert
+
+Entrada:
+
+{
+  "version_id": 15,
+  "ifc_path": "/mnt/files/model.ifc",
+  "longitude": -68.1193,
+  "latitude": -16.4897,
+  "height": 3650,
+  "heading": 0,
+  "pitch": 0,
+  "roll": 0
+}
+
+Salida:
+
+{
+  "status": "ready",
+  "tileset_url": "https://tu-servidor/tiles/15/tileset.json",
+  "log": "ok"
+}
+POST /callback
+
+El microservicio notifica a Odoo:
+
+{
+  "version_id": 15,
+  "status": "ready",
+  "tileset_url": "/bim/tiles/15/tileset.json",
+  "conversion_log": "IfcConvert + glbToB3dm + createTilesetJson completed"
+}
+Qué debe hacer Odoo al subir un IFC
+Guardar el IFC como ir.attachment.
+Crear bim.model.version.
+Marcar estado queued.
+Llamar al microservicio.
+Mostrar un botón “Abrir visor” solo si status == ready.
+Menús y vistas
+
+Yo haría esto:
+
+Menú
+
+BIM
+Modelos
+Versiones
+Snapshots
+
+Vista de modelo
+
+nombre
+proyecto
+disciplina
+versión activa
+smart button “Versiones”
+
+Vista de versión
+
+archivo IFC
+estado
+log
+URL tileset
+botón “Convertir”
+botón “Abrir visor”
+botón “Generar snapshot”
+Permisos
+
+Tres grupos son suficientes al inicio:
+
+BIM Usuario: ver modelos y abrir visor
+BIM Editor: subir IFC, lanzar conversión
+BIM Manager: borrar, reemplazar, cambiar versión activa
+Cómo manejar metadatos IFC
+
+Aquí está una decisión clave: 3D Tiles resuelve la visualización, pero IFC resuelve la semántica. buildingSMART define IFC como portador de identidad, atributos y relaciones; e IfcOpenShell expone utilidades para extraer propiedades comunes y relaciones, además de geometría triangulada para procesamiento.
+
+Por eso, además del tileset.json, yo guardaría un JSON de índices en Odoo con:
+
+GlobalId
+clase IFC (IfcWall, IfcDoor, etc.)
+nombre
+piso
+psets básicos
+
+Ese índice te servirá para:
+
+búsquedas por elemento
+panel lateral
+filtros por clase
+selección desde lista y zoom a objeto
+
+Aquí conviene ser honesto: el pipeline IFC → GLB → B3DM/3D Tiles es muy bueno para visualización, pero puede perder parte de la semántica si no extraes y guardas metadata aparte. Esto es una inferencia de arquitectura basada en que IFC guarda semántica rica y 3D Tiles se centra en contenido renderizable/streaming.
+
+Funciones del visor para el MVP
+
+Haz solo esto al principio:
+
+orbitar, pan, zoom
+centrar modelo
+fondo claro/oscuro
+árbol por clases IFC
+mostrar/ocultar clases
+buscar por nombre / GlobalId
+snapshot PNG
+abrir desde proyecto o tarea
+
+Cesium también soporta styling y filtering sobre 3D Tiles, así que luego puedes colorear elementos por disciplina, tipo o estado si conservas propiedades adecuadas.
+
+Lo que no haría en la primera versión
+
+No metería todavía:
+
+edición IFC desde Odoo
+mediciones 3D complejas
+clash detection
+BCF completo
+federación de decenas de modelos
+
+Primero haría que:
+suba IFC → convierta → abra → filtre → capture.
+
+Riesgos técnicos reales
+
+El más importante es este: no hay una única cadena “mágica” IFC → 3D Tiles con toda la semántica intacta. La parte de visualización la tienes bien cubierta con IfcConvert + 3d-tiles-tools + CesiumJS, pero si quieres preservar atributos BIM de forma útil en la UI, te conviene extraer metadata del IFC en paralelo y no depender solo del tileset. Esto es una recomendación técnica mía basada en el papel distinto de IFC y 3D Tiles.
+
+Mi recomendación final
+
+Hazlo en estas fases:
+
+Fase 1
+
+upload IFC
+IfcConvert a GLB
+glbToB3dm
+createTilesetJson
+visor CesiumJS en client action de Odoo
+
+Fase 2
+
+extraer metadata del IFC con IfcOpenShell
+árbol de elementos
+búsqueda y filtros
+
+Fase 3
+
+snapshots con comentarios
+comparación entre versiones
+federación de varios modelos con merge o mergeJson de 3d-tiles-tools
+
+La decisión correcta para no complicarte es:
+Odoo = negocio, permisos, historial y UI
+microservicio = conversión IFC/3D
+CesiumJS = visor
+
+Puedo seguir con el siguiente paso y darte el esqueleto real del módulo Odoo 18, archivo por archivo, listo para empezar a programar.

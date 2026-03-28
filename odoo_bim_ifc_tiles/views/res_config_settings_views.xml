@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_bim_ifc_tiles" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.bim.ifc.tiles</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base_setup.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app string="BIM IFC Viewer" name="odoo_bim_ifc_tiles" groups="base.group_system">
+                    <block title="Conversion Microservice">
+                        <setting
+                            string="Converter Endpoint"
+                            help="HTTP endpoint that receives IFC conversion jobs."
+                        >
+                            <field
+                                name="bim_converter_endpoint"
+                                placeholder="https://converter.example.com/api/jobs"
+                            />
+                        </setting>
+                        <setting
+                            string="Shared Token"
+                            help="Token used by Odoo and the converter for download and callback authentication."
+                        >
+                            <field name="bim_converter_shared_token"/>
+                        </setting>
+                        <setting
+                            string="Request Timeout"
+                            help="Timeout in seconds for the submission request."
+                        >
+                            <field name="bim_converter_timeout"/>
+                        </setting>
+                        <setting
+                            string="Verify SSL"
+                            help="Disable only if you are testing with self-signed certificates."
+                        >
+                            <field name="bim_converter_verify_ssl"/>
+                        </setting>
+                        <setting
+                            string="Public Base URL"
+                            help="Optional override if Easypanel exposes Odoo behind a public URL different from web.base.url."
+                        >
+                            <field
+                                name="bim_callback_base_url"
+                                placeholder="https://odoo.example.com"
+                            />
+                        </setting>
+                    </block>
+                    <block title="Cesium Viewer">
+                        <setting
+                            string="Cesium JS URL"
+                            help="Official CDN URL for CesiumJS used by the backend viewer."
+                        >
+                            <field name="bim_cesium_js_url"/>
+                        </setting>
+                        <setting
+                            string="Cesium CSS URL"
+                            help="Official CDN URL for the Cesium widgets stylesheet."
+                        >
+                            <field name="bim_cesium_css_url"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>

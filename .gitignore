@@ -1,0 +1,15 @@
+__pycache__/
+.pytest_cache/
+.venv/
+.env
+.env.*
+
+*.pyc
+*.pyo
+*.log
+
+ifc_converter_service/data/
+ifc_converter_service/.env
+
+.DS_Store
+Thumbs.db

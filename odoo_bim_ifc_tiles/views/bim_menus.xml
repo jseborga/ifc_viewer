@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <menuitem
+        id="menu_bim_root"
+        name="BIM"
+        sequence="80"
+        groups="odoo_bim_ifc_tiles.group_bim_user"
+    />
+
+    <menuitem
+        id="menu_bim_models"
+        name="Models"
+        parent="menu_bim_root"
+        action="action_bim_model"
+        sequence="10"
+        groups="odoo_bim_ifc_tiles.group_bim_user"
+    />
+
+    <menuitem
+        id="menu_bim_versions"
+        name="Versions"
+        parent="menu_bim_root"
+        action="action_bim_version"
+        sequence="20"
+        groups="odoo_bim_ifc_tiles.group_bim_user"
+    />
+</odoo>
