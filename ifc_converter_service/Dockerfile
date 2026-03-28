@@ -5,6 +5,7 @@ USER root
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu/hdf5/serial \
     PORT=8080 \
     STORAGE_ROOT=/data \
     VERIFY_SSL=true
@@ -13,6 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     gnupg \
+    libhdf5-103-1 \
+    libhdf5-cpp-103-1 \
     libhdf5-dev \
     python3 \
     python3-pip \
@@ -24,6 +27,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get update \
     && apt-get install -y --no-install-recommends nodejs \
     && npm install -g 3d-tiles-tools \
+    && ldconfig \
+    && test -f /usr/lib/x86_64-linux-gnu/libhdf5_serial_cpp.so.103 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
