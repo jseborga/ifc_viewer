@@ -1,11 +1,10 @@
-FROM aecgeeks/ifcopenshell:latest
+FROM aecgeeks/ifcopenshell:22.04
 
 USER root
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu/hdf5/serial \
     PORT=8080 \
     STORAGE_ROOT=/data \
     VERIFY_SSL=true
@@ -14,9 +13,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     gnupg \
-    libhdf5-103 \
-    libhdf5-cpp-103 \
-    libhdf5-dev \
     python3 \
     python3-pip \
     && mkdir -p /etc/apt/keyrings \
@@ -27,14 +23,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get update \
     && apt-get install -y --no-install-recommends nodejs \
     && npm install -g 3d-tiles-tools \
-    && CPP_LIB="$(find /usr/lib -name libhdf5_cpp.so.103 | head -n 1)" \
-    && if [ -n "$CPP_LIB" ] && [ ! -f /usr/lib/x86_64-linux-gnu/libhdf5_serial_cpp.so.103 ]; then ln -s "$CPP_LIB" /usr/lib/x86_64-linux-gnu/libhdf5_serial_cpp.so.103; fi \
-    && C_LIB="$(find /usr/lib -name libhdf5.so.103 | head -n 1)" \
-    && if [ -n "$C_LIB" ] && [ ! -f /usr/lib/x86_64-linux-gnu/libhdf5_serial.so.103 ]; then ln -s "$C_LIB" /usr/lib/x86_64-linux-gnu/libhdf5_serial.so.103; fi \
-    && if [ -f /usr/lib/x86_64-linux-gnu/hdf5/serial/libhdf5_serial_cpp.so.103 ] && [ ! -f /usr/lib/x86_64-linux-gnu/libhdf5_serial_cpp.so.103 ]; then ln -s /usr/lib/x86_64-linux-gnu/hdf5/serial/libhdf5_serial_cpp.so.103 /usr/lib/x86_64-linux-gnu/libhdf5_serial_cpp.so.103; fi \
-    && if [ -f /usr/lib/x86_64-linux-gnu/hdf5/serial/libhdf5_serial.so.103 ] && [ ! -f /usr/lib/x86_64-linux-gnu/libhdf5_serial.so.103 ]; then ln -s /usr/lib/x86_64-linux-gnu/hdf5/serial/libhdf5_serial.so.103 /usr/lib/x86_64-linux-gnu/libhdf5_serial.so.103; fi \
-    && ldconfig \
-    && test -f /usr/lib/x86_64-linux-gnu/libhdf5_serial_cpp.so.103 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
