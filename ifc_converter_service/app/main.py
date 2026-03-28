@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import json
 import logging
 import os
@@ -8,12 +6,12 @@ import subprocess
 import threading
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(level=LOG_LEVEL)
@@ -38,31 +36,31 @@ CALLBACK_TIMEOUT = float(os.getenv("CALLBACK_TIMEOUT", "60"))
 
 app = FastAPI(title="IFC Converter Service", version="1.0.0")
 jobs_lock = threading.Lock()
-jobs: dict[str, dict[str, Any]] = {}
+jobs: Dict[str, Dict[str, Any]] = {}
 
 
 class ConversionJobRequest(BaseModel):
     version_id: int
-    model_name: str | None = None
-    source_filename: str | None = None
+    model_name: Optional[str] = None
+    source_filename: Optional[str] = None
     ifc_download_url: str
     callback_url: str
     access_token: str
-    longitude: float | None = None
-    latitude: float | None = None
-    height: float | None = None
-    heading: float | None = None
-    pitch: float | None = None
-    roll: float | None = None
+    longitude: Optional[float] = None
+    latitude: Optional[float] = None
+    height: Optional[float] = None
+    heading: Optional[float] = None
+    pitch: Optional[float] = None
+    roll: Optional[float] = None
 
 
-def extract_token(authorization: str | None, x_bim_token: str | None) -> str:
+def extract_token(authorization: Optional[str], x_bim_token: Optional[str]) -> str:
     if authorization and authorization.startswith("Bearer "):
         return authorization.split(" ", 1)[1].strip()
     return (x_bim_token or "").strip()
 
 
-def require_shared_token(authorization: str | None, x_bim_token: str | None) -> None:
+def require_shared_token(authorization: Optional[str], x_bim_token: Optional[str]) -> None:
     token = extract_token(authorization, x_bim_token)
     if not SHARED_TOKEN or token != SHARED_TOKEN:
         raise HTTPException(status_code=403, detail="Invalid shared token")
@@ -74,7 +72,7 @@ def update_job(job_id: str, **values: Any) -> None:
         current.update(values)
 
 
-def safe_filename(name: str | None, default: str) -> str:
+def safe_filename(name: Optional[str], default: str) -> str:
     raw = (name or default).strip().replace("\\", "_").replace("/", "_")
     return raw or default
 
@@ -85,7 +83,7 @@ def ensure_storage() -> None:
     (STORAGE_ROOT / "tiles").mkdir(parents=True, exist_ok=True)
 
 
-def run_command(command: list[str], cwd: Path) -> str:
+def run_command(command: List[str], cwd: Path) -> str:
     LOGGER.info("Running command: %s", " ".join(command))
     result = subprocess.run(
         command,
@@ -112,7 +110,7 @@ def download_ifc(payload: ConversionJobRequest, target: Path) -> str:
         return f"Downloaded {len(response.content)} bytes from {payload.ifc_download_url}"
 
 
-def build_tileset(job_id: str, payload: ConversionJobRequest) -> tuple[str, str]:
+def build_tileset(job_id: str, payload: ConversionJobRequest) -> Tuple[str, str]:
     ensure_storage()
     job_root = STORAGE_ROOT / "jobs" / job_id
     tiles_root = STORAGE_ROOT / "tiles" / str(payload.version_id)
@@ -174,7 +172,7 @@ def build_tileset(job_id: str, payload: ConversionJobRequest) -> tuple[str, str]
     return tileset_url, "\n\n".join(logs)
 
 
-def callback_odoo(payload: ConversionJobRequest, body: dict[str, Any]) -> None:
+def callback_odoo(payload: ConversionJobRequest, body: Dict[str, Any]) -> None:
     headers = {
         "Authorization": f"Bearer {payload.access_token}",
         "X-BIM-Token": payload.access_token,
@@ -185,7 +183,7 @@ def callback_odoo(payload: ConversionJobRequest, body: dict[str, Any]) -> None:
         response.raise_for_status()
 
 
-def process_job(job_id: str, payload_dict: dict[str, Any]) -> None:
+def process_job(job_id: str, payload_dict: Dict[str, Any]) -> None:
     payload = ConversionJobRequest(**payload_dict)
     update_job(job_id, status="processing", version_id=payload.version_id)
     try:
@@ -225,7 +223,7 @@ def startup() -> None:
 
 
 @app.get("/health")
-def health() -> dict[str, Any]:
+def health() -> Dict[str, Any]:
     return {
         "ok": True,
         "public_base_url": PUBLIC_BASE_URL,
@@ -237,9 +235,9 @@ def health() -> dict[str, Any]:
 @app.post("/jobs")
 def create_job(
     payload: ConversionJobRequest,
-    authorization: str | None = Header(default=None),
-    x_bim_token: str | None = Header(default=None, alias="X-BIM-Token"),
-) -> dict[str, Any]:
+    authorization: Optional[str] = Header(default=None),
+    x_bim_token: Optional[str] = Header(default=None, alias="X-BIM-Token"),
+) -> Dict[str, Any]:
     require_shared_token(authorization, x_bim_token)
     job_id = uuid.uuid4().hex
     update_job(job_id, status="accepted", version_id=payload.version_id)
@@ -251,9 +249,9 @@ def create_job(
 @app.get("/jobs/{job_id}")
 def get_job(
     job_id: str,
-    authorization: str | None = Header(default=None),
-    x_bim_token: str | None = Header(default=None, alias="X-BIM-Token"),
-) -> dict[str, Any]:
+    authorization: Optional[str] = Header(default=None),
+    x_bim_token: Optional[str] = Header(default=None, alias="X-BIM-Token"),
+) -> Dict[str, Any]:
     require_shared_token(authorization, x_bim_token)
     job = jobs.get(job_id)
     if not job:
