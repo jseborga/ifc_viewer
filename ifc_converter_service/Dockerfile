@@ -27,10 +27,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get update \
     && apt-get install -y --no-install-recommends nodejs \
     && npm install -g 3d-tiles-tools \
+    && CPP_LIB="$(find /usr/lib -name libhdf5_cpp.so.103 | head -n 1)" \
+    && if [ -n "$CPP_LIB" ] && [ ! -f /usr/lib/x86_64-linux-gnu/libhdf5_serial_cpp.so.103 ]; then ln -s "$CPP_LIB" /usr/lib/x86_64-linux-gnu/libhdf5_serial_cpp.so.103; fi \
+    && C_LIB="$(find /usr/lib -name libhdf5.so.103 | head -n 1)" \
+    && if [ -n "$C_LIB" ] && [ ! -f /usr/lib/x86_64-linux-gnu/libhdf5_serial.so.103 ]; then ln -s "$C_LIB" /usr/lib/x86_64-linux-gnu/libhdf5_serial.so.103; fi \
     && if [ -f /usr/lib/x86_64-linux-gnu/hdf5/serial/libhdf5_serial_cpp.so.103 ] && [ ! -f /usr/lib/x86_64-linux-gnu/libhdf5_serial_cpp.so.103 ]; then ln -s /usr/lib/x86_64-linux-gnu/hdf5/serial/libhdf5_serial_cpp.so.103 /usr/lib/x86_64-linux-gnu/libhdf5_serial_cpp.so.103; fi \
     && if [ -f /usr/lib/x86_64-linux-gnu/hdf5/serial/libhdf5_serial.so.103 ] && [ ! -f /usr/lib/x86_64-linux-gnu/libhdf5_serial.so.103 ]; then ln -s /usr/lib/x86_64-linux-gnu/hdf5/serial/libhdf5_serial.so.103 /usr/lib/x86_64-linux-gnu/libhdf5_serial.so.103; fi \
     && ldconfig \
-    && find /usr/lib -name libhdf5_serial_cpp.so.103 | grep -q . \
+    && test -f /usr/lib/x86_64-linux-gnu/libhdf5_serial_cpp.so.103 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
