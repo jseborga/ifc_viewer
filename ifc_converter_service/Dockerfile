@@ -14,8 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     gnupg \
-    libhdf5-103-1 \
-    libhdf5-cpp-103-1 \
+    libhdf5-103 \
+    libhdf5-cpp-103 \
     libhdf5-dev \
     python3 \
     python3-pip \
@@ -27,8 +27,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get update \
     && apt-get install -y --no-install-recommends nodejs \
     && npm install -g 3d-tiles-tools \
+    && if [ -f /usr/lib/x86_64-linux-gnu/hdf5/serial/libhdf5_serial_cpp.so.103 ] && [ ! -f /usr/lib/x86_64-linux-gnu/libhdf5_serial_cpp.so.103 ]; then ln -s /usr/lib/x86_64-linux-gnu/hdf5/serial/libhdf5_serial_cpp.so.103 /usr/lib/x86_64-linux-gnu/libhdf5_serial_cpp.so.103; fi \
+    && if [ -f /usr/lib/x86_64-linux-gnu/hdf5/serial/libhdf5_serial.so.103 ] && [ ! -f /usr/lib/x86_64-linux-gnu/libhdf5_serial.so.103 ]; then ln -s /usr/lib/x86_64-linux-gnu/hdf5/serial/libhdf5_serial.so.103 /usr/lib/x86_64-linux-gnu/libhdf5_serial.so.103; fi \
     && ldconfig \
-    && test -f /usr/lib/x86_64-linux-gnu/libhdf5_serial_cpp.so.103 \
+    && find /usr/lib -name libhdf5_serial_cpp.so.103 | grep -q . \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
