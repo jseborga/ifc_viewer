@@ -3,7 +3,9 @@ access_bim_model_user,bim.model.user,model_bim_model,odoo_bim_ifc_tiles.group_bi
 access_bim_version_user,bim.model.version.user,model_bim_model_version,odoo_bim_ifc_tiles.group_bim_user,1,1,1,0
 access_bim_snapshot_user,bim.snapshot.user,model_bim_snapshot,odoo_bim_ifc_tiles.group_bim_user,1,1,1,0
 access_bim_comment_user,bim.comment.user,model_bim_comment,odoo_bim_ifc_tiles.group_bim_user,1,1,1,0
+access_bim_element_user,bim.element.user,model_bim_element,odoo_bim_ifc_tiles.group_bim_user,1,0,0,0
 access_bim_model_manager,bim.model.manager,model_bim_model,odoo_bim_ifc_tiles.group_bim_manager,1,1,1,1
 access_bim_version_manager,bim.model.version.manager,model_bim_model_version,odoo_bim_ifc_tiles.group_bim_manager,1,1,1,1
 access_bim_snapshot_manager,bim.snapshot.manager,model_bim_snapshot,odoo_bim_ifc_tiles.group_bim_manager,1,1,1,1
 access_bim_comment_manager,bim.comment.manager,model_bim_comment,odoo_bim_ifc_tiles.group_bim_manager,1,1,1,1
+access_bim_element_manager,bim.element.manager,model_bim_element,odoo_bim_ifc_tiles.group_bim_manager,1,1,1,1

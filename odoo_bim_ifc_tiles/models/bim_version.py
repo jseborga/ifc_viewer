@@ -64,7 +64,27 @@ class BimModelVersion(models.Model):
         readonly=True,
     )
     tileset_url = fields.Char(string="Tileset URL", tracking=True)
+    visualization_format = fields.Char(string="Visualization Format", tracking=True)
+    tileset_spec_version = fields.Char(string="Tileset Spec Version", tracking=True)
+    validation_status = fields.Selection(
+        selection=[
+            ("not_validated", "Not Validated"),
+            ("passed", "Passed"),
+            ("warning", "Warning"),
+            ("failed", "Failed"),
+        ],
+        default="not_validated",
+        required=True,
+        tracking=True,
+    )
+    validation_summary = fields.Text()
+    validation_report_json = fields.Text(string="Validation Report JSON")
+    visual_package_manifest_json = fields.Text(string="Visual Package Manifest JSON")
     metadata_json = fields.Text(string="Metadata JSON")
+    metadata_extracted_on = fields.Datetime(readonly=True)
+    validation_checked_on = fields.Datetime(readonly=True)
+    element_count = fields.Integer(readonly=True)
+    metadata_truncated = fields.Boolean(readonly=True)
     conversion_log = fields.Text()
     error_message = fields.Text()
     conversion_job_ref = fields.Char(string="Conversion Job Ref", tracking=True)
@@ -85,6 +105,11 @@ class BimModelVersion(models.Model):
         "bim.comment",
         "version_id",
         string="Comments",
+    )
+    element_ids = fields.One2many(
+        "bim.element",
+        "version_id",
+        string="BIM Elements",
     )
     can_open_viewer = fields.Boolean(compute="_compute_can_open_viewer")
 
@@ -163,12 +188,20 @@ class BimModelVersion(models.Model):
             "status": self.status,
             "tileset_url": f"/bim/tiles/{self.id}/tileset.json" if self.tileset_url else False,
             "raw_tileset_url": self.tileset_url,
+            "visualization_format": self.visualization_format,
+            "tileset_spec_version": self.tileset_spec_version,
+            "validation_status": self.validation_status,
+            "validation_summary": self.validation_summary,
+            "element_count": self.element_count,
+            "metadata_truncated": self.metadata_truncated,
             "longitude": self.georef_lon,
             "latitude": self.georef_lat,
             "height": self.georef_height,
             "heading": self.heading,
             "pitch": self.pitch,
             "roll": self.roll,
+            "element_metadata_url": f"/bim/version/{self.id}/elements",
+            "element_metadata_detail_url_template": f"/bim/version/{self.id}/elements/__GLOBAL_ID__",
             "cesium_js_url": config.get_param("odoo_bim_ifc_tiles.cesium_js_url")
             or "https://cesium.com/downloads/cesiumjs/releases/1.139.1/Build/Cesium/Cesium.js",
             "cesium_css_url": config.get_param("odoo_bim_ifc_tiles.cesium_css_url")
@@ -233,11 +266,21 @@ class BimModelVersion(models.Model):
         self.write(
             {
                 "status": "queued",
+                "validation_status": "not_validated",
+                "validation_summary": False,
+                "validation_report_json": False,
+                "visual_package_manifest_json": False,
+                "metadata_json": False,
+                "metadata_extracted_on": False,
+                "validation_checked_on": False,
+                "element_count": 0,
+                "metadata_truncated": False,
                 "error_message": False,
                 "conversion_requested_on": fields.Datetime.now(),
                 "conversion_log": _("Queued and submitted to the converter endpoint."),
             }
         )
+        self.env["bim.element"].sudo().search([("version_id", "=", self.id)]).unlink()
 
         try:
             response_payload = self._perform_json_post(
@@ -286,6 +329,11 @@ class BimModelVersion(models.Model):
             "ifc_download_url": f"{base_url}/bim/version/{self.id}/ifc",
             "callback_url": f"{base_url}/bim/conversion/callback",
             "access_token": token,
+            "metadata_mode": "external_by_global_id",
+            "requested_streaming_format": "3dtiles",
+            "preferred_content_format": "gltf_glb",
+            "legacy_b3dm_fallback": True,
+            "validation_level": "standard",
             "longitude": self.georef_lon,
             "latitude": self.georef_lat,
             "height": self.georef_height,
@@ -318,9 +366,35 @@ class BimModelVersion(models.Model):
             vals["tileset_url"] = payload["tileset_url"]
         if payload.get("job_id"):
             vals["conversion_job_ref"] = str(payload["job_id"])
+        if payload.get("visualization_format"):
+            vals["visualization_format"] = payload["visualization_format"]
+        if payload.get("tileset_spec_version"):
+            vals["tileset_spec_version"] = payload["tileset_spec_version"]
+        if payload.get("validation_status"):
+            vals["validation_status"] = payload["validation_status"]
+            vals["validation_checked_on"] = fields.Datetime.now()
+        if payload.get("validation_summary") is not None:
+            vals["validation_summary"] = payload.get("validation_summary") or False
+        if payload.get("validation_report") is not None:
+            vals["validation_report_json"] = self._json_or_false(payload.get("validation_report"))
+        if payload.get("visual_package_manifest") is not None:
+            vals["visual_package_manifest_json"] = self._json_or_false(
+                payload.get("visual_package_manifest")
+            )
+        if payload.get("metadata_summary") is not None:
+            vals["metadata_json"] = self._json_or_false(payload.get("metadata_summary"))
+            vals["metadata_extracted_on"] = fields.Datetime.now()
+        if payload.get("element_count") is not None:
+            vals["element_count"] = int(payload["element_count"] or 0)
+        if payload.get("metadata_truncated") is not None:
+            vals["metadata_truncated"] = bool(payload.get("metadata_truncated"))
         if status in {"ready", "error"}:
             vals["conversion_finished_on"] = fields.Datetime.now()
         self.write(vals)
+        if payload.get("element_metadata") is not None:
+            self._replace_element_metadata(payload.get("element_metadata") or [])
+            if payload.get("element_count") is None:
+                self.write({"element_count": len(self.element_ids)})
         self.message_post(body=_("Converter callback received. New status: %s") % status)
 
     def _perform_json_post(self, endpoint, payload, headers, timeout, verify_ssl):
@@ -351,3 +425,47 @@ class BimModelVersion(models.Model):
 
     def _stringify_payload(self, payload):
         return json.dumps(payload, indent=2, sort_keys=True)
+
+    def _json_or_false(self, payload):
+        if payload in (None, False, ""):
+            return False
+        if isinstance(payload, str):
+            return payload
+        return self._stringify_payload(payload)
+
+    def _replace_element_metadata(self, element_metadata):
+        self.ensure_one()
+        element_model = self.env["bim.element"].sudo()
+        element_model.search([("version_id", "=", self.id)]).unlink()
+
+        rows = []
+        for item in element_metadata:
+            global_id = (item.get("global_id") or "").strip()
+            if not global_id:
+                continue
+            properties = item.get("properties") or {}
+            rows.append(
+                {
+                    "version_id": self.id,
+                    "global_id": global_id,
+                    "source_uid": item.get("source_uid") or global_id,
+                    "name": item.get("name"),
+                    "ifc_class": item.get("ifc_class"),
+                    "object_type": item.get("object_type"),
+                    "predefined_type": item.get("predefined_type"),
+                    "level_name": item.get("level_name"),
+                    "system_name": item.get("system_name"),
+                    "discipline": item.get("discipline"),
+                    "material_names": ", ".join(item.get("material_names") or [])
+                    if isinstance(item.get("material_names"), list)
+                    else item.get("material_names"),
+                    "is_spatial": bool(item.get("is_spatial")),
+                    "property_count": len(properties) if isinstance(properties, dict) else 0,
+                    "properties_json": self._json_or_false(properties),
+                }
+            )
+            if len(rows) >= 200:
+                element_model.create(rows)
+                rows = []
+        if rows:
+            element_model.create(rows)

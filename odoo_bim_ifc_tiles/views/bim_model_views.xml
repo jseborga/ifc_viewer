@@ -11,6 +11,8 @@
                 <field name="task_id"/>
                 <field name="active_version_id"/>
                 <field name="latest_status"/>
+                <field name="active_validation_status"/>
+                <field name="active_element_count"/>
                 <field name="version_count"/>
             </list>
         </field>
@@ -37,12 +39,14 @@
                             <field name="name"/>
                             <field name="discipline"/>
                             <field name="active_version_id"/>
+                            <field name="active_validation_status" readonly="1"/>
                             <field name="active_version_can_open_viewer" invisible="1"/>
                         </group>
                         <group>
                             <field name="project_id"/>
                             <field name="task_id"/>
                             <field name="version_count" readonly="1"/>
+                            <field name="active_element_count" readonly="1"/>
                         </group>
                     </group>
                     <group>
@@ -55,6 +59,8 @@
                                     <field name="name" readonly="1"/>
                                     <field name="source_filename" readonly="1"/>
                                     <field name="status"/>
+                                    <field name="validation_status" readonly="1"/>
+                                    <field name="element_count" readonly="1"/>
                                     <field name="uploaded_on" readonly="1"/>
                                     <field name="tileset_url"/>
                                     <field name="can_open_viewer" column_invisible="1"/>
@@ -83,6 +89,9 @@
                                                 <field name="uploaded_by" readonly="1"/>
                                                 <field name="uploaded_on" readonly="1"/>
                                                 <field name="tileset_url"/>
+                                                <field name="visualization_format" readonly="1"/>
+                                                <field name="validation_status" readonly="1"/>
+                                                <field name="element_count" readonly="1"/>
                                                 <field name="can_open_viewer" invisible="1"/>
                                             </group>
                                         </group>

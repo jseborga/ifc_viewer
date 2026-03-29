@@ -6,30 +6,33 @@ Incluye:
 
 - modelos BIM y versionado IFC
 - seguridad base
-- menús y vistas
-- acción cliente OWL para visor
-- endpoints backend para payload y redirección al tileset
+- menus y vistas
+- accion cliente OWL para visor
+- endpoints backend para payload y redireccion al tileset
+- metadata BIM estructurada por `GlobalId`
+- resultados de validacion del paquete visual
+- consulta HTTP de elementos BIM desde Odoo
 
-No incluye todavía:
+No incluye todavia:
 
-- extracción real de metadata IFC
-- librería Cesium vendorizada
+- interaccion semantica avanzada directamente dentro del canvas 3D
+- libreria Cesium vendorizada
 
-La integración real con un conversor externo ya está preparada mediante:
+La integracion real con un conversor externo ya esta preparada mediante:
 
 - ajustes en `Settings`
-- envío del job por HTTP desde Odoo
+- envio del job por HTTP desde Odoo
 - descarga autenticada del IFC
-- callback autenticado para actualizar la versión
+- callback autenticado para actualizar la version
 
-La guía de despliegue y pruebas está en `GUIA_PRUEBAS_EASYPANEL.md`.
+La guia de despliegue y pruebas esta en `GUIA_PRUEBAS_EASYPANEL.md`.
 
 Para probar el visor con este scaffold:
 
 1. Cree un modelo BIM.
-2. Cree una versión y adjunte un IFC.
-3. Establezca manualmente `status = ready`.
-4. Coloque un valor válido en `tileset_url`.
-5. Abra el visor desde el botón de la versión.
+2. Cree una version y adjunte un IFC.
+3. Ejecute `Queue Conversion`.
+4. Espere a que la version quede en `ready`.
+5. Abra el visor desde el boton de la version.
 
-Si `window.Cesium` no está disponible, el visor mostrará un placeholder en lugar del canvas 3D.
+Si `window.Cesium` no esta disponible, el visor mostrara un placeholder en lugar del canvas 3D.

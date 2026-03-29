@@ -1,7 +1,7 @@
 {
     "name": "BIM IFC Tiles Viewer",
     "summary": "Versionado IFC y visor 3D base para Odoo 18 Community",
-    "version": "18.0.1.0.0",
+    "version": "18.0.2.0.0",
     "category": "Services/Project",
     "license": "LGPL-3",
     "author": "Codex",

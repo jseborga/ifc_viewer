@@ -1,3 +1,4 @@
+from . import bim_element
 from . import bim_comment
 from . import bim_model
 from . import bim_snapshot

@@ -52,6 +52,16 @@ class BimModel(models.Model):
         string="Active Status",
         readonly=True,
     )
+    active_validation_status = fields.Selection(
+        related="active_version_id.validation_status",
+        string="Validation Status",
+        readonly=True,
+    )
+    active_element_count = fields.Integer(
+        related="active_version_id.element_count",
+        string="Element Count",
+        readonly=True,
+    )
     active_version_can_open_viewer = fields.Boolean(
         compute="_compute_active_version_can_open_viewer"
     )
