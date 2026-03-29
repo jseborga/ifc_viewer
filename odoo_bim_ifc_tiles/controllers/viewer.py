@@ -1,5 +1,7 @@
 import base64
 import json
+from urllib import error, request as urlrequest
+from urllib.parse import urljoin
 
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -35,8 +37,8 @@ class BimTilesController(http.Controller):
         provided = self._get_request_token()
         return bool(expected) and expected == provided
 
-    @http.route("/bim/tiles/<int:version_id>/tileset.json", type="http", auth="user")
-    def bim_tileset_redirect(self, version_id, **kwargs):
+    @http.route("/bim/tiles/<int:version_id>/<path:resource_path>", type="http", auth="user")
+    def bim_tiles_proxy(self, version_id, resource_path, **kwargs):
         version = request.env["bim.model.version"].browse(version_id).exists()
         if not version:
             raise NotFound()
@@ -44,7 +46,27 @@ class BimTilesController(http.Controller):
         version.check_access_rule("read")
         if version.status != "ready" or not version.tileset_url:
             raise NotFound()
-        return request.redirect(version.tileset_url, code=302)
+
+        upstream_url = (
+            version.tileset_url
+            if resource_path == "tileset.json"
+            else urljoin(version.tileset_url, resource_path)
+        )
+        try:
+            with urlrequest.urlopen(upstream_url, timeout=60) as response:
+                body = response.read()
+                headers = [
+                    ("Content-Type", response.headers.get("Content-Type", "application/octet-stream")),
+                    ("Content-Length", str(len(body))),
+                    ("Cache-Control", "public, max-age=300"),
+                ]
+                return request.make_response(body, headers=headers)
+        except error.HTTPError as exc:
+            if exc.code == 404:
+                raise NotFound()
+            raise
+        except error.URLError:
+            raise NotFound()
 
     @http.route("/bim/version/<int:version_id>/ifc", type="http", auth="public")
     def bim_ifc_download(self, version_id, **kwargs):

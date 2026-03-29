@@ -1,38 +1,89 @@
 .o_bim_viewer {
+    --bim-ink: #1d2630;
+    --bim-muted: #6a7581;
+    --bim-panel: #fffdf7;
+    --bim-line: rgba(33, 44, 55, 0.1);
+    --bim-accent: #0c6c7c;
+    --bim-accent-soft: rgba(12, 108, 124, 0.12);
+    --bim-warn: #8f2d17;
+    --bim-open: #8c5c00;
+    --bim-open-soft: rgba(201, 146, 20, 0.16);
+    --bim-resolved: #1e7b3b;
+    --bim-resolved-soft: rgba(30, 123, 59, 0.14);
     display: grid;
-    grid-template-columns: 360px 1fr;
+    grid-template-columns: 430px 1fr;
     min-height: calc(100vh - 120px);
-    background: linear-gradient(180deg, #f6f1e8 0%, #efe6d6 100%);
+    background:
+        radial-gradient(circle at top left, rgba(12, 108, 124, 0.08), transparent 28%),
+        linear-gradient(180deg, #f7f5ef 0%, #ece6da 100%);
 }
 
 .o_bim_viewer__sidebar {
-    padding: 24px;
-    background: rgba(255, 251, 245, 0.92);
-    border-right: 1px solid rgba(74, 56, 43, 0.12);
+    padding: 20px;
+    background: rgba(255, 252, 247, 0.95);
+    border-right: 1px solid var(--bim-line);
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 16px;
+    overflow-y: auto;
 }
 
-.o_bim_viewer__sidebar h2 {
+.o_bim_viewer__headline {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.o_bim_viewer__headline h2 {
     margin: 0;
-    font-size: 24px;
-    line-height: 1.1;
-    color: #2f241e;
+    font-size: 28px;
+    line-height: 1;
+    color: var(--bim-ink);
+}
+
+.o_bim_viewer__status-chip {
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: var(--bim-accent-soft);
+    color: var(--bim-accent);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 
 .o_bim_viewer__meta {
     display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
+}
+
+.o_bim_viewer__meta > div,
+.o_bim_viewer__panel {
+    padding: 16px;
+    border-radius: 18px;
+    background: var(--bim-panel);
+    box-shadow: 0 12px 30px rgba(33, 44, 55, 0.08);
 }
 
 .o_bim_viewer__panel {
     display: grid;
-    gap: 8px;
-    padding: 16px;
-    border-radius: 16px;
-    background: #fff9f0;
-    box-shadow: 0 8px 24px rgba(74, 56, 43, 0.08);
+    gap: 10px;
+}
+
+.o_bim_viewer__panel--flat {
+    box-shadow: none;
+    border: 1px solid var(--bim-line);
+    background: rgba(255, 255, 255, 0.78);
+}
+
+.o_bim_viewer__panel-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--bim-ink);
 }
 
 .o_bim_viewer__label {
@@ -40,26 +91,454 @@
     font-size: 11px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #7e6856;
+    color: var(--bim-muted);
+}
+
+.o_bim_viewer__tool-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.o_bim_viewer__tool-row--compact .btn {
+    min-width: 96px;
+}
+
+.o_bim_viewer__tool-row--between {
+    justify-content: space-between;
+    align-items: center;
+}
+
+.o_bim_viewer__input,
+.o_bim_viewer__textarea,
+.o_bim_viewer__range {
+    width: 100%;
+}
+
+.o_bim_viewer__input,
+.o_bim_viewer__textarea {
+    border: 1px solid rgba(33, 44, 55, 0.14);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--bim-ink);
+    padding: 10px 12px;
+}
+
+.o_bim_viewer__textarea {
+    resize: vertical;
+    min-height: 88px;
+}
+
+.o_bim_viewer__toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--bim-ink);
+    font-weight: 600;
+}
+
+.o_bim_viewer__record {
+    display: grid;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--bim-line);
+}
+
+.o_bim_viewer__record:first-of-type {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.o_bim_viewer__record-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.o_bim_viewer__record-meta {
+    font-size: 12px;
+    color: var(--bim-muted);
+}
+
+.o_bim_viewer__record-note {
+    font-size: 13px;
+    color: var(--bim-ink);
+    white-space: pre-wrap;
+}
+
+.o_bim_viewer__record-badge {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.o_bim_viewer__record-badge--open {
+    background: var(--bim-open-soft);
+    color: var(--bim-open);
+}
+
+.o_bim_viewer__record-badge--resolved {
+    background: var(--bim-resolved-soft);
+    color: var(--bim-resolved);
+}
+
+.o_bim_viewer__snapshot-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.o_bim_viewer__snapshot-card {
+    border: 1px solid var(--bim-line);
+    border-radius: 14px;
+    background: #fff;
+    padding: 8px;
+    display: grid;
+    gap: 6px;
+    text-align: left;
+    transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.o_bim_viewer__snapshot-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px rgba(18, 26, 35, 0.08);
+}
+
+.o_bim_viewer__snapshot-card--active {
+    border-color: rgba(12, 108, 124, 0.35);
+    background: rgba(12, 108, 124, 0.08);
+    box-shadow: 0 10px 22px rgba(12, 108, 124, 0.12);
+}
+
+.o_bim_viewer__snapshot-card-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--bim-ink);
+}
+
+.o_bim_viewer__thumb {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid var(--bim-line);
+    object-fit: cover;
+    aspect-ratio: 16 / 10;
+    background: #fff;
+}
+
+.o_bim_viewer__link {
+    padding: 0;
+    font-size: 12px;
+}
+
+.o_bim_viewer__empty {
+    color: var(--bim-muted);
+    font-size: 13px;
 }
 
 .o_bim_viewer__error {
-    color: #8c1d18;
+    color: var(--bim-warn);
     font-weight: 600;
 }
 
 .o_bim_viewer__stage {
-    padding: 24px;
+    padding: 20px;
 }
 
 .o_bim_viewer__canvas {
     width: 100%;
-    min-height: calc(100vh - 168px);
-    border-radius: 24px;
+    min-height: calc(100vh - 160px);
+    border-radius: 28px;
+    overflow: hidden;
     background:
-        radial-gradient(circle at top left, rgba(212, 172, 106, 0.3), transparent 32%),
-        linear-gradient(145deg, #30241d 0%, #17120f 100%);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+        radial-gradient(circle at top left, rgba(12, 108, 124, 0.24), transparent 22%),
+        linear-gradient(145deg, #253746 0%, #101921 100%);
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+        0 20px 50px rgba(19, 28, 36, 0.22);
+}
+
+.o_bim_viewer__modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    background: rgba(8, 15, 24, 0.72);
+    padding: 28px;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+}
+
+.o_bim_viewer__modal {
+    width: 100%;
+    max-width: 1480px;
+    background: #f8f5ee;
+    border-radius: 28px;
+    box-shadow: 0 28px 60px rgba(8, 15, 24, 0.35);
+    display: grid;
+    grid-template-rows: auto 1fr;
+    overflow: hidden;
+}
+
+.o_bim_viewer__modal-head {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--bim-line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    background: rgba(255, 255, 255, 0.8);
+}
+
+.o_bim_viewer__modal-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--bim-ink);
+}
+
+.o_bim_viewer__modal-subtitle {
+    color: var(--bim-muted);
+    font-size: 13px;
+}
+
+.o_bim_viewer__modal-body {
+    padding: 22px 24px 24px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 18px;
+    min-height: 0;
+}
+
+.o_bim_viewer__modal-canvas,
+.o_bim_viewer__modal-sidebar {
+    min-height: 0;
+}
+
+.o_bim_viewer__modal-canvas {
+    display: grid;
+    gap: 12px;
+}
+
+.o_bim_viewer__modal-sidebar {
+    display: grid;
+    gap: 12px;
+    align-content: start;
+    overflow-y: auto;
+}
+
+.o_bim_viewer__capture-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.o_bim_viewer__tool-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.o_bim_viewer__tool-group--range {
+    min-width: 180px;
+}
+
+.o_bim_viewer__capture-help {
+    color: var(--bim-muted);
+    font-size: 13px;
+}
+
+.o_bim_viewer__capture-stage {
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid var(--bim-line);
+    background: #0f1720;
+    cursor: crosshair;
+    min-height: 440px;
+}
+
+.o_bim_viewer__capture-stage--readonly {
+    cursor: default;
+}
+
+.o_bim_viewer__capture-image {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.o_bim_viewer__capture-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.o_bim_viewer__capture-polyline {
+    fill: none;
+    pointer-events: auto;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.o_bim_viewer__capture-polyline--draft {
+    opacity: 0.7;
+}
+
+.o_bim_viewer__annotation-marker,
+.o_bim_viewer__annotation-text,
+.o_bim_viewer__annotation-rect {
+    position: absolute;
+}
+
+.o_bim_viewer__annotation-marker {
+    width: 30px;
+    height: 30px;
+    margin-left: -15px;
+    margin-top: -15px;
+    border-radius: 999px;
+    background: var(--annotation-color, #d13030);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #fff;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+}
+
+.o_bim_viewer__annotation-marker--active {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.25);
+}
+
+.o_bim_viewer__annotation-text {
+    transform: translate(-50%, -50%);
+    padding: 7px 10px;
+    border-radius: 10px;
+    border: 2px solid var(--annotation-color, #d13030);
+    background: rgba(17, 25, 34, 0.84);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.o_bim_viewer__annotation-text--active {
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.18);
+}
+
+.o_bim_viewer__annotation-rect {
+    border: var(--annotation-width, 3px) solid var(--annotation-color, #d13030);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+
+.o_bim_viewer__annotation-rect--active {
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+        0 0 0 3px rgba(255, 255, 255, 0.18);
+}
+
+.o_bim_viewer__annotation-rect--draft {
+    opacity: 0.7;
+    border-style: dashed;
+}
+
+.o_bim_viewer__annotation-rect-label {
+    display: inline-block;
+    padding: 4px 8px;
+    background: rgba(17, 25, 34, 0.84);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.o_bim_viewer__swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    background: var(--swatch-color);
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 0 0 1px rgba(33, 44, 55, 0.14);
+}
+
+.o_bim_viewer__swatch--active {
+    box-shadow:
+        0 0 0 2px rgba(12, 108, 124, 0.38),
+        0 0 0 1px rgba(33, 44, 55, 0.14);
+}
+
+.o_bim_viewer__color-input {
+    width: 34px;
+    height: 34px;
+    border: 0;
+    padding: 0;
+    background: transparent;
+}
+
+.o_bim_viewer__annotation-item {
+    border: 1px solid var(--bim-line);
+    border-radius: 14px;
+    padding: 10px 12px;
+    display: grid;
+    gap: 6px;
+    background: #fff;
+}
+
+.o_bim_viewer__annotation-item--active {
+    border-color: rgba(12, 108, 124, 0.35);
+    background: rgba(12, 108, 124, 0.08);
+}
+
+.o_bim_viewer__annotation-item-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.o_bim_viewer__annotation-chip {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    display: inline-block;
+}
+
+.o_bim_viewer__thumb-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.o_bim_viewer__thumb-strip-item {
+    border: 1px solid var(--bim-line);
+    border-radius: 14px;
+    padding: 8px;
+    background: #fff;
+    display: grid;
+    gap: 6px;
+    text-align: left;
+    font-size: 12px;
+    color: var(--bim-ink);
+}
+
+@media (max-width: 1360px) {
+    .o_bim_viewer {
+        grid-template-columns: 370px 1fr;
+    }
+}
+
+@media (max-width: 1280px) {
+    .o_bim_viewer__modal-body {
+        grid-template-columns: 1fr;
+    }
 }
 
 @media (max-width: 1200px) {
@@ -67,7 +546,31 @@
         grid-template-columns: 1fr;
     }
 
+    .o_bim_viewer__meta {
+        grid-template-columns: 1fr 1fr;
+    }
+
     .o_bim_viewer__canvas {
         min-height: 60vh;
+    }
+}
+
+@media (max-width: 720px) {
+    .o_bim_viewer__meta {
+        grid-template-columns: 1fr;
+    }
+
+    .o_bim_viewer__headline,
+    .o_bim_viewer__modal-head {
+        flex-direction: column;
+    }
+
+    .o_bim_viewer__modal-backdrop {
+        padding: 12px;
+    }
+
+    .o_bim_viewer__snapshot-grid,
+    .o_bim_viewer__thumb-strip {
+        grid-template-columns: 1fr;
     }
 }

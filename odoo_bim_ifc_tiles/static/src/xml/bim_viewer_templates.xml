@@ -3,8 +3,16 @@
     <t t-name="odoo_bim_ifc_tiles.BimViewerAction">
         <div class="o_bim_viewer">
             <aside class="o_bim_viewer__sidebar">
-                <h2>IFC Viewer</h2>
+                <div class="o_bim_viewer__headline">
+                    <h2>BIM Review Viewer</h2>
+                    <span class="o_bim_viewer__status-chip"><t t-esc="state.status || '-'"/></span>
+                </div>
+
                 <div class="o_bim_viewer__meta">
+                    <div>
+                        <span class="o_bim_viewer__label">Project</span>
+                        <strong><t t-esc="state.reviewSummary.projectName || '-'"/></strong>
+                    </div>
                     <div>
                         <span class="o_bim_viewer__label">Model</span>
                         <strong><t t-esc="state.modelName || '-'"/></strong>
@@ -14,30 +22,248 @@
                         <strong><t t-esc="state.versionName || '-'"/></strong>
                     </div>
                     <div>
-                        <span class="o_bim_viewer__label">Source</span>
-                        <strong><t t-esc="state.sourceFilename || '-'"/></strong>
+                        <span class="o_bim_viewer__label">Validation</span>
+                        <strong><t t-esc="state.validationStatus || '-'"/></strong>
                     </div>
                     <div>
-                        <span class="o_bim_viewer__label">Status</span>
-                        <strong><t t-esc="state.status || '-'"/></strong>
+                        <span class="o_bim_viewer__label">Open Reviews</span>
+                        <strong><t t-esc="state.reviewSummary.openCount || 0"/></strong>
+                    </div>
+                    <div>
+                        <span class="o_bim_viewer__label">Resolved Reviews</span>
+                        <strong><t t-esc="state.reviewSummary.resolvedCount || 0"/></strong>
                     </div>
                 </div>
+
+                <div class="o_bim_viewer__panel">
+                    <div class="o_bim_viewer__panel-title">Viewer Tools</div>
+                    <div class="o_bim_viewer__tool-row">
+                        <button class="btn btn-primary" t-on-click="captureSnapshotDraft" t-att-disabled="state.reviewBusy || state.loading">
+                            Capture for Review
+                        </button>
+                        <button class="btn btn-secondary" t-on-click="restoreView" t-att-disabled="state.loading">
+                            Reset View
+                        </button>
+                    </div>
+
+                    <label class="o_bim_viewer__label">Quality preset</label>
+                    <div class="o_bim_viewer__tool-row o_bim_viewer__tool-row--compact">
+                        <button class="btn" t-att-class="state.qualityPreset === 'low' ? 'btn-primary' : 'btn-secondary'" t-on-click="setQualityLow">Low</button>
+                        <button class="btn" t-att-class="state.qualityPreset === 'standard' ? 'btn-primary' : 'btn-secondary'" t-on-click="setQualityStandard">Standard</button>
+                        <button class="btn" t-att-class="state.qualityPreset === 'high' ? 'btn-primary' : 'btn-secondary'" t-on-click="setQualityHigh">High</button>
+                    </div>
+
+                    <label class="o_bim_viewer__toggle">
+                        <input type="checkbox" t-att-checked="state.clipEnabled" t-on-change="toggleClipping"/>
+                        <span>Enable clipping plane</span>
+                    </label>
+
+                    <label class="o_bim_viewer__label">Section plane</label>
+                    <div class="o_bim_viewer__tool-row o_bim_viewer__tool-row--compact">
+                        <button class="btn" t-att-class="state.clipAxis === 'z' ? 'btn-primary' : 'btn-secondary'" t-on-click="setClipAxisHorizontal">Plan Z</button>
+                        <button class="btn" t-att-class="state.clipAxis === 'x' ? 'btn-primary' : 'btn-secondary'" t-on-click="setClipAxisVerticalX">Plan X</button>
+                        <button class="btn" t-att-class="state.clipAxis === 'y' ? 'btn-primary' : 'btn-secondary'" t-on-click="setClipAxisVerticalY">Plan Y</button>
+                    </div>
+
+                    <div class="o_bim_viewer__tool-row o_bim_viewer__tool-row--between">
+                        <span class="o_bim_viewer__label">Offset <t t-esc="state.clipDistance"/> | Z cuts from top down</span>
+                        <button class="btn btn-secondary btn-sm" t-on-click="resetClippingDistance">Center Cut</button>
+                    </div>
+                    <input
+                        class="o_bim_viewer__range"
+                        type="range"
+                        t-att-min="-state.clipRange"
+                        t-att-max="state.clipRange"
+                        t-att-value="state.clipDistance"
+                        t-on-input="onClipDistanceInput"
+                    />
+                </div>
+
+                <div class="o_bim_viewer__panel">
+                    <div class="o_bim_viewer__panel-title">Snapshots</div>
+                    <div t-if="!state.snapshots.length" class="o_bim_viewer__empty">No snapshots yet.</div>
+                    <div t-if="state.snapshots.length" class="o_bim_viewer__snapshot-grid">
+                        <button
+                            t-foreach="state.snapshots"
+                            t-as="snapshot"
+                            t-key="snapshot.id"
+                            t-att-class="getSnapshotCardClass(snapshot)"
+                            t-att-data-snapshot-id="snapshot.id"
+                            t-on-click="selectSnapshotFromDataset"
+                        >
+                            <img t-if="snapshot.image_url" class="o_bim_viewer__thumb" t-att-src="snapshot.image_url" alt="Snapshot"/>
+                            <div class="o_bim_viewer__snapshot-card-name"><t t-esc="snapshot.name"/></div>
+                            <div class="o_bim_viewer__record-meta"><t t-esc="snapshot.create_date"/></div>
+                            <div class="o_bim_viewer__record-meta"><t t-esc="snapshot.annotation_count"/> annotations</div>
+                            <div t-if="snapshot.note" class="o_bim_viewer__record-note"><t t-esc="snapshot.note"/></div>
+                            <div class="o_bim_viewer__tool-row">
+                                <span class="btn btn-link o_bim_viewer__link">Review</span>
+                                <span
+                                    class="btn btn-link o_bim_viewer__link"
+                                    t-att-data-snapshot-id="snapshot.id"
+                                    t-on-click.stop="restoreSnapshotCameraFromDataset"
+                                >
+                                    Camera
+                                </span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <div t-if="getSelectedSnapshot()" class="o_bim_viewer__panel">
+                    <div class="o_bim_viewer__panel-title">Selected Snapshot</div>
+                    <div class="o_bim_viewer__capture-stage o_bim_viewer__capture-stage--readonly">
+                        <img t-if="getSelectedSnapshot().image_url" class="o_bim_viewer__capture-image" t-att-src="getSelectedSnapshot().image_url" alt="Selected snapshot"/>
+                        <svg class="o_bim_viewer__capture-svg" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+                            <t t-foreach="getSelectedSnapshot().annotations" t-as="annotation" t-key="'sidebar-preview-polyline-' + annotation.id">
+                                <polyline
+                                    t-if="annotation.type === 'freehand'"
+                                    class="o_bim_viewer__capture-polyline"
+                                    t-att-points="getAnnotationPointsText(annotation)"
+                                    t-att-style="getSvgPolylineStyle(annotation)"
+                                />
+                            </t>
+                        </svg>
+                        <t t-foreach="getSelectedSnapshot().annotations" t-as="annotation" t-key="'sidebar-preview-shape-' + annotation.id">
+                            <div
+                                t-if="annotation.type === 'marker'"
+                                class="o_bim_viewer__annotation-marker"
+                                t-att-style="getMarkerStyle(annotation)"
+                            >
+                                <t t-esc="annotation.id"/>
+                            </div>
+                            <div
+                                t-if="annotation.type === 'text'"
+                                class="o_bim_viewer__annotation-text"
+                                t-att-style="getTextStyle(annotation)"
+                            >
+                                <t t-esc="annotation.text || getAnnotationSummary(annotation)"/>
+                            </div>
+                            <div
+                                t-if="annotation.type === 'rect'"
+                                class="o_bim_viewer__annotation-rect"
+                                t-att-style="getRectStyle(annotation)"
+                            >
+                                <span t-if="annotation.text" class="o_bim_viewer__annotation-rect-label"><t t-esc="annotation.text"/></span>
+                            </div>
+                        </t>
+                    </div>
+                    <div class="o_bim_viewer__snapshot-card-name"><t t-esc="getSelectedSnapshot().name"/></div>
+                    <div class="o_bim_viewer__record-meta"><t t-esc="getSelectedSnapshot().annotation_count"/> annotations</div>
+                    <div class="o_bim_viewer__record-note"><t t-esc="getSelectedSnapshot().note || 'No general note'"/></div>
+                    <div class="o_bim_viewer__tool-row">
+                        <button class="btn btn-secondary" t-on-click="restoreSelectedSnapshotCamera">Restore Camera</button>
+                        <button class="btn btn-secondary" t-on-click="prefillCommentFromSelectedSnapshot">Use in Review Issue</button>
+                        <button class="btn btn-secondary" t-on-click="closeSnapshotPreview">Clear</button>
+                    </div>
+                    <div class="o_bim_viewer__panel-title">Snapshot Annotations</div>
+                    <div t-if="!(getSelectedSnapshot().annotations || []).length" class="o_bim_viewer__empty">No annotations in this snapshot.</div>
+                    <div t-foreach="getSelectedSnapshot().annotations" t-as="annotation" t-key="'sidebar-preview-item-' + annotation.id" class="o_bim_viewer__annotation-item">
+                        <div class="o_bim_viewer__annotation-item-head">
+                            <span class="o_bim_viewer__annotation-chip" t-att-style="'background:' + (annotation.color || state.captureColor)"/>
+                            <strong><t t-esc="getAnnotationSummary(annotation)"/></strong>
+                        </div>
+                        <div class="o_bim_viewer__record-note"><t t-esc="annotation.text || 'No note'"/></div>
+                    </div>
+                </div>
+
+                <div class="o_bim_viewer__panel">
+                    <div class="o_bim_viewer__panel-title">Review Issue</div>
+                    <span class="o_bim_viewer__label">Selected element</span>
+                    <strong><t t-esc="state.selectedElementGuid || state.selectedElementLabel || 'No element metadata detected'"/></strong>
+                    <label class="o_bim_viewer__label">Title</label>
+                    <input
+                        class="o_bim_viewer__input"
+                        type="text"
+                        placeholder="Issue title"
+                        t-att-value="state.commentTitle"
+                        t-on-input="onCommentTitleInput"
+                    />
+                    <label class="o_bim_viewer__label">GlobalId or reference</label>
+                    <input
+                        class="o_bim_viewer__input"
+                        type="text"
+                        placeholder="GlobalId or manual reference"
+                        t-att-value="state.commentElementGuid"
+                        t-on-input="onCommentGuidInput"
+                    />
+                    <label class="o_bim_viewer__label">Priority</label>
+                    <select class="o_bim_viewer__input" t-att-value="state.commentPriority" t-on-change="onCommentPriorityChange">
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                    <textarea
+                        class="o_bim_viewer__textarea"
+                        rows="4"
+                        placeholder="Describe the issue or requested correction"
+                        t-att-value="state.commentText"
+                        t-on-input="onCommentTextInput"
+                    />
+                    <button class="btn btn-primary" t-on-click="submitComment" t-att-disabled="state.reviewBusy || !state.commentText.trim()">
+                        Save Review Issue
+                    </button>
+                </div>
+
+                <div class="o_bim_viewer__panel">
+                    <div class="o_bim_viewer__panel-title">Project Review Board</div>
+                    <div t-if="!state.comments.length" class="o_bim_viewer__empty">No review issues yet.</div>
+                    <div t-foreach="state.comments" t-as="comment" t-key="comment.id" class="o_bim_viewer__record">
+                        <div class="o_bim_viewer__record-head">
+                            <strong><t t-esc="comment.title"/></strong>
+                            <span
+                                class="o_bim_viewer__record-badge"
+                                t-att-class="comment.status === 'resolved' ? 'o_bim_viewer__record-badge o_bim_viewer__record-badge--resolved' : 'o_bim_viewer__record-badge o_bim_viewer__record-badge--open'"
+                            >
+                                <t t-esc="comment.status"/>
+                            </span>
+                        </div>
+                        <div class="o_bim_viewer__record-meta">
+                            <t t-esc="comment.priority"/> | <t t-esc="comment.element_guid || 'General review'"/>
+                        </div>
+                        <div class="o_bim_viewer__record-note"><t t-esc="comment.comment"/></div>
+                        <div class="o_bim_viewer__record-meta"><t t-esc="comment.author_name"/> <t t-esc="comment.create_date"/></div>
+                        <div class="o_bim_viewer__tool-row">
+                            <button
+                                class="btn btn-link o_bim_viewer__link"
+                                t-att-data-camera-json="comment.camera_json"
+                                t-on-click="restoreCameraFromDataset"
+                            >
+                                View
+                            </button>
+                            <button
+                                t-if="comment.status === 'open'"
+                                class="btn btn-link o_bim_viewer__link"
+                                t-att-data-comment-id="comment.id"
+                                data-status="resolved"
+                                t-on-click="setCommentStatusFromDataset"
+                            >
+                                Mark Resolved
+                            </button>
+                            <button
+                                t-if="comment.status === 'resolved'"
+                                class="btn btn-link o_bim_viewer__link"
+                                t-att-data-comment-id="comment.id"
+                                data-status="open"
+                                t-on-click="setCommentStatusFromDataset"
+                            >
+                                Reopen
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="o_bim_viewer__panel">
                     <p t-if="state.loading">Loading viewer payload...</p>
-                    <p t-if="state.error" class="o_bim_viewer__error">
-                        <t t-esc="state.error"/>
-                    </p>
-                    <p t-if="state.viewerStatus === 'missing_tileset'">
-                        The version has no tileset URL yet.
-                    </p>
+                    <p t-if="state.error" class="o_bim_viewer__error"><t t-esc="state.error"/></p>
+                    <p t-if="state.viewerStatus === 'missing_tileset'">The version has no tileset URL yet.</p>
                     <p t-if="state.viewerStatus === 'missing_cesium'">
                         CesiumJS is not available in this scaffold. Add the library to backend assets or expose
                         <code>window.Cesium</code>.
                     </p>
-                    <p t-if="state.metadataHint">
-                        <t t-esc="state.metadataHint"/>
-                    </p>
+                    <p t-if="state.metadataHint"><t t-esc="state.metadataHint"/></p>
                 </div>
+
                 <div class="o_bim_viewer__panel">
                     <span class="o_bim_viewer__label">Backend tileset route</span>
                     <code><t t-esc="state.tilesetUrl || '-'"/></code>
@@ -45,9 +271,186 @@
                     <code><t t-esc="state.rawTilesetUrl || '-'"/></code>
                 </div>
             </aside>
+
             <section class="o_bim_viewer__stage">
                 <div class="o_bim_viewer__canvas" t-ref="viewer"/>
             </section>
+
+            <div t-if="state.captureDraftImage" class="o_bim_viewer__modal-backdrop">
+                <div class="o_bim_viewer__modal" t-on-click.stop="">
+                    <div class="o_bim_viewer__modal-head">
+                        <div>
+                            <div class="o_bim_viewer__modal-title">Capture Review Editor</div>
+                            <div class="o_bim_viewer__modal-subtitle">Create notes, rectangles, text and pencil marks before saving.</div>
+                        </div>
+                        <div class="o_bim_viewer__tool-row">
+                            <button class="btn btn-primary" t-on-click="saveAnnotatedSnapshot" t-att-disabled="state.reviewBusy">Save Snapshot</button>
+                            <button class="btn btn-secondary" t-on-click="clearCaptureDraft" t-att-disabled="state.reviewBusy">Close</button>
+                        </div>
+                    </div>
+
+                    <div class="o_bim_viewer__modal-body">
+                        <div class="o_bim_viewer__modal-canvas">
+                            <div class="o_bim_viewer__capture-toolbar">
+                                <div class="o_bim_viewer__tool-group">
+                                    <button class="btn" t-att-class="state.captureTool === 'marker' ? 'btn-primary' : 'btn-secondary'" data-tool="marker" t-on-click="setCaptureToolFromDataset">Marker</button>
+                                    <button class="btn" t-att-class="state.captureTool === 'text' ? 'btn-primary' : 'btn-secondary'" data-tool="text" t-on-click="setCaptureToolFromDataset">Text</button>
+                                    <button class="btn" t-att-class="state.captureTool === 'rect' ? 'btn-primary' : 'btn-secondary'" data-tool="rect" t-on-click="setCaptureToolFromDataset">Rectangle</button>
+                                    <button class="btn" t-att-class="state.captureTool === 'freehand' ? 'btn-primary' : 'btn-secondary'" data-tool="freehand" t-on-click="setCaptureToolFromDataset">Pencil</button>
+                                </div>
+                                <div class="o_bim_viewer__tool-group">
+                                    <button class="o_bim_viewer__swatch" t-att-class="state.captureColor === '#d13030' ? 'o_bim_viewer__swatch o_bim_viewer__swatch--active' : 'o_bim_viewer__swatch'" data-color="#d13030" style="--swatch-color:#d13030" t-on-click="setCaptureColorFromDataset"></button>
+                                    <button class="o_bim_viewer__swatch" t-att-class="state.captureColor === '#ff8f00' ? 'o_bim_viewer__swatch o_bim_viewer__swatch--active' : 'o_bim_viewer__swatch'" data-color="#ff8f00" style="--swatch-color:#ff8f00" t-on-click="setCaptureColorFromDataset"></button>
+                                    <button class="o_bim_viewer__swatch" t-att-class="state.captureColor === '#167f39' ? 'o_bim_viewer__swatch o_bim_viewer__swatch--active' : 'o_bim_viewer__swatch'" data-color="#167f39" style="--swatch-color:#167f39" t-on-click="setCaptureColorFromDataset"></button>
+                                    <button class="o_bim_viewer__swatch" t-att-class="state.captureColor === '#1463b8' ? 'o_bim_viewer__swatch o_bim_viewer__swatch--active' : 'o_bim_viewer__swatch'" data-color="#1463b8" style="--swatch-color:#1463b8" t-on-click="setCaptureColorFromDataset"></button>
+                                    <button class="o_bim_viewer__swatch" t-att-class="state.captureColor === '#7f2db8' ? 'o_bim_viewer__swatch o_bim_viewer__swatch--active' : 'o_bim_viewer__swatch'" data-color="#7f2db8" style="--swatch-color:#7f2db8" t-on-click="setCaptureColorFromDataset"></button>
+                                    <button class="o_bim_viewer__swatch" t-att-class="state.captureColor === '#101820' ? 'o_bim_viewer__swatch o_bim_viewer__swatch--active' : 'o_bim_viewer__swatch'" data-color="#101820" style="--swatch-color:#101820" t-on-click="setCaptureColorFromDataset"></button>
+                                    <input class="o_bim_viewer__color-input" type="color" t-att-value="state.captureColor" t-on-input="onCaptureColorInput"/>
+                                </div>
+                                <div class="o_bim_viewer__tool-group o_bim_viewer__tool-group--range">
+                                    <span class="o_bim_viewer__label">Stroke</span>
+                                    <input type="range" min="1" max="12" t-att-value="state.captureStrokeWidth" t-on-input="onCaptureStrokeWidthInput"/>
+                                </div>
+                            </div>
+
+                            <div class="o_bim_viewer__capture-help">
+                                Marker/Text: click once. Rectangle/Pencil: click and drag on the captured image.
+                            </div>
+
+                            <div
+                                class="o_bim_viewer__capture-stage"
+                                t-on-click="onCaptureStageClick"
+                                t-on-mousedown="onCaptureStagePointerDown"
+                                t-on-mousemove="onCaptureStagePointerMove"
+                                t-on-mouseup="onCaptureStagePointerUp"
+                                t-on-mouseleave="onCaptureStagePointerUp"
+                            >
+                                <img class="o_bim_viewer__capture-image" t-att-src="state.captureDraftImage" alt="Captured view"/>
+                                <svg class="o_bim_viewer__capture-svg" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+                                    <t t-foreach="state.captureAnnotations" t-as="annotation" t-key="'polyline-' + annotation.id">
+                                        <polyline
+                                            t-if="annotation.type === 'freehand'"
+                                            class="o_bim_viewer__capture-polyline"
+                                            t-att-data-annotation-id="annotation.id"
+                                            t-att-points="getAnnotationPointsText(annotation)"
+                                            t-att-style="getSvgPolylineStyle(annotation)"
+                                            t-on-click.stop="selectAnnotationFromDataset"
+                                        />
+                                    </t>
+                                    <polyline
+                                        t-if="state.captureDraftShape and state.captureDraftShape.type === 'freehand'"
+                                        class="o_bim_viewer__capture-polyline o_bim_viewer__capture-polyline--draft"
+                                        t-att-points="getDraftPointsText()"
+                                        t-att-style="getDraftPolylineStyle()"
+                                    />
+                                </svg>
+
+                                <t t-foreach="state.captureAnnotations" t-as="annotation" t-key="'shape-' + annotation.id">
+                                    <div
+                                        t-if="annotation.type === 'marker'"
+                                        class="o_bim_viewer__annotation-marker"
+                                        t-att-class="state.activeAnnotationId === annotation.id ? 'o_bim_viewer__annotation-marker o_bim_viewer__annotation-marker--active' : 'o_bim_viewer__annotation-marker'"
+                                        t-att-style="getMarkerStyle(annotation)"
+                                        t-att-data-annotation-id="annotation.id"
+                                        t-on-click.stop="selectAnnotationFromDataset"
+                                    >
+                                        <t t-esc="annotation.id"/>
+                                    </div>
+                                    <div
+                                        t-if="annotation.type === 'text'"
+                                        class="o_bim_viewer__annotation-text"
+                                        t-att-class="state.activeAnnotationId === annotation.id ? 'o_bim_viewer__annotation-text o_bim_viewer__annotation-text--active' : 'o_bim_viewer__annotation-text'"
+                                        t-att-style="getTextStyle(annotation)"
+                                        t-att-data-annotation-id="annotation.id"
+                                        t-on-click.stop="selectAnnotationFromDataset"
+                                    >
+                                        <t t-esc="annotation.text || getAnnotationSummary(annotation)"/>
+                                    </div>
+                                    <div
+                                        t-if="annotation.type === 'rect'"
+                                        class="o_bim_viewer__annotation-rect"
+                                        t-att-class="state.activeAnnotationId === annotation.id ? 'o_bim_viewer__annotation-rect o_bim_viewer__annotation-rect--active' : 'o_bim_viewer__annotation-rect'"
+                                        t-att-style="getRectStyle(annotation)"
+                                        t-att-data-annotation-id="annotation.id"
+                                        t-on-click.stop="selectAnnotationFromDataset"
+                                    >
+                                        <span t-if="annotation.text" class="o_bim_viewer__annotation-rect-label"><t t-esc="annotation.text"/></span>
+                                    </div>
+                                </t>
+
+                                <div
+                                    t-if="state.captureDraftShape and state.captureDraftShape.type === 'rect'"
+                                    class="o_bim_viewer__annotation-rect o_bim_viewer__annotation-rect--draft"
+                                    t-att-style="getDraftRectStyle()"
+                                />
+                            </div>
+                        </div>
+
+                        <aside class="o_bim_viewer__modal-sidebar">
+                            <div class="o_bim_viewer__panel o_bim_viewer__panel--flat">
+                                <div class="o_bim_viewer__panel-title">Snapshot Note</div>
+                                <textarea
+                                    class="o_bim_viewer__textarea"
+                                    rows="4"
+                                    placeholder="General note for this captured review"
+                                    t-att-value="state.snapshotNote"
+                                    t-on-input="onSnapshotNoteInput"
+                                />
+                            </div>
+
+                            <div class="o_bim_viewer__panel o_bim_viewer__panel--flat">
+                                <div class="o_bim_viewer__panel-title">Selected Annotation</div>
+                                <div t-if="state.activeAnnotationId">
+                                    <div class="o_bim_viewer__record-meta">
+                                        <t t-esc="getAnnotationTypeLabel(state.activeAnnotationType)"/> #<t t-esc="state.activeAnnotationId"/>
+                                    </div>
+                                    <textarea
+                                        class="o_bim_viewer__textarea"
+                                        rows="3"
+                                        t-att-value="state.activeAnnotationText"
+                                        t-on-input="onAnnotationTextInput"
+                                    />
+                                    <button class="btn btn-secondary" t-on-click="removeSelectedAnnotation">Remove Annotation</button>
+                                </div>
+                                <div t-if="!state.activeAnnotationId" class="o_bim_viewer__empty">
+                                    Select a marker, text, rectangle or pencil stroke to edit its note.
+                                </div>
+                            </div>
+
+                            <div class="o_bim_viewer__panel o_bim_viewer__panel--flat">
+                                <div class="o_bim_viewer__panel-title">Capture Annotations</div>
+                                <div t-if="!state.captureAnnotations.length" class="o_bim_viewer__empty">No annotations yet.</div>
+                                <div t-foreach="state.captureAnnotations" t-as="annotation" t-key="'item-' + annotation.id" t-att-class="getAnnotationItemClass(annotation)" t-att-data-annotation-id="annotation.id" t-on-click="selectAnnotationFromDataset">
+                                    <div class="o_bim_viewer__annotation-item-head">
+                                        <span class="o_bim_viewer__annotation-chip" t-att-style="'background:' + (annotation.color || state.captureColor)"/>
+                                        <strong><t t-esc="getAnnotationSummary(annotation)"/></strong>
+                                    </div>
+                                    <div class="o_bim_viewer__record-meta"><t t-esc="annotation.text || 'No note'"/></div>
+                                </div>
+                            </div>
+
+                            <div class="o_bim_viewer__panel o_bim_viewer__panel--flat">
+                                <div class="o_bim_viewer__panel-title">Recent Snapshot Thumbnails</div>
+                                <div t-if="!state.snapshots.length" class="o_bim_viewer__empty">No saved thumbnails yet.</div>
+                                <div t-if="state.snapshots.length" class="o_bim_viewer__thumb-strip">
+                                    <button
+                                        t-foreach="state.snapshots"
+                                        t-as="snapshot"
+                                        t-key="'modal-snapshot-' + snapshot.id"
+                                        class="o_bim_viewer__thumb-strip-item"
+                                        t-att-data-snapshot-id="snapshot.id"
+                                        t-on-click="selectSnapshotFromDataset"
+                                    >
+                                        <img t-if="snapshot.image_url" class="o_bim_viewer__thumb" t-att-src="snapshot.image_url" alt="Snapshot"/>
+                                        <span><t t-esc="snapshot.name"/></span>
+                                    </button>
+                                </div>
+                            </div>
+                        </aside>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </t>
 </templates>

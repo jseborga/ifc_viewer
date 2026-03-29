@@ -8,6 +8,7 @@ Incluye:
 - seguridad base
 - menus y vistas
 - accion cliente OWL para visor
+- herramientas de revision en el visor
 - endpoints backend para payload y redireccion al tileset
 - metadata BIM estructurada por `GlobalId`
 - resultados de validacion del paquete visual
@@ -24,6 +25,17 @@ La integracion real con un conversor externo ya esta preparada mediante:
 - envio del job por HTTP desde Odoo
 - descarga autenticada del IFC
 - callback autenticado para actualizar la version
+
+La primera iteracion del viewer de revision incluye:
+
+- captura de pantalla con guardado en `bim.snapshot`
+- captura anotada con marcadores sobre la imagen
+- notas de revision con camara asociada en `bim.comment`
+- tablero simple de revision con estado `open / resolved`
+- restauracion de camara desde snapshots y comentarios
+- control de calidad visual
+- corte horizontal y vertical mejorado para revision del tileset
+- editor popup de capturas con marcador, texto, rectangulo y pencil
 
 La guia de despliegue y pruebas esta en `GUIA_PRUEBAS_EASYPANEL.md`.
 

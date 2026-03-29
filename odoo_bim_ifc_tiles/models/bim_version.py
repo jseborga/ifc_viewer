@@ -433,6 +433,75 @@ class BimModelVersion(models.Model):
             return payload
         return self._stringify_payload(payload)
 
+    def _create_snapshot_from_viewer(
+        self,
+        image_data_url,
+        camera_payload,
+        note=None,
+        name=None,
+        annotations_payload=None,
+    ):
+        self.ensure_one()
+        if not image_data_url or "," not in image_data_url:
+            raise UserError(_("Viewer snapshot image data is required."))
+
+        header, encoded = image_data_url.split(",", 1)
+        if ";base64" not in header:
+            raise UserError(_("Unsupported snapshot format."))
+
+        image_name = name or _("Viewer Snapshot")
+        snapshot = self.env["bim.snapshot"].create(
+            {
+                "name": image_name,
+                "version_id": self.id,
+                "camera_json": self._json_or_false(camera_payload) or "{}",
+                "annotations_json": self._json_or_false(annotations_payload) or False,
+                "note": note or False,
+            }
+        )
+        attachment = self.env["ir.attachment"].sudo().create(
+            {
+                "name": "%s.png" % image_name,
+                "datas": encoded,
+                "res_model": "bim.snapshot",
+                "res_id": snapshot.id,
+                "type": "binary",
+                "mimetype": "image/png",
+            }
+        )
+        snapshot.image_attachment_id = attachment.id
+        return snapshot
+
+    def _create_comment_from_viewer(
+        self,
+        comment,
+        camera_payload,
+        element_guid=None,
+        title=None,
+        priority="medium",
+        snapshot_id=None,
+    ):
+        self.ensure_one()
+        if not comment or not comment.strip():
+            raise UserError(_("Comment text is required."))
+        snapshot = False
+        if snapshot_id:
+            snapshot = self.env["bim.snapshot"].browse(snapshot_id).exists()
+            if not snapshot or snapshot.version_id != self:
+                raise UserError(_("The selected snapshot does not belong to this BIM version."))
+        return self.env["bim.comment"].create(
+            {
+                "version_id": self.id,
+                "snapshot_id": snapshot.id if snapshot else False,
+                "title": (title or _("Review Note")).strip() or _("Review Note"),
+                "status": "open",
+                "priority": priority or "medium",
+                "comment": comment.strip(),
+                "element_guid": (element_guid or "").strip() or False,
+                "camera_json": self._json_or_false(camera_payload) or "{}",
+            }
+        )
+
     def _replace_element_metadata(self, element_metadata):
         self.ensure_one()
         element_model = self.env["bim.element"].sudo()
